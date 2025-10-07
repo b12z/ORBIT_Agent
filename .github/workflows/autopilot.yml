@@ -1,0 +1,45 @@
+name: Autopilot (disabled)
+on:
+  workflow_dispatch:       # disabled schedule to avoid referencing non-existent module
+jobs:
+  run-autopilot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Env
+        run: |
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
+          echo "API_KEY=${{ secrets.X_API_KEY }}" >> $GITHUB_ENV
+          echo "API_KEY_SECRET=${{ secrets.X_API_KEY_SECRET }}" >> $GITHUB_ENV
+          echo "X_ACCESS_TOKEN=${{ secrets.X_ACCESS_TOKEN }}" >> $GITHUB_ENV
+          echo "X_ACCESS_SECRET=${{ secrets.X_ACCESS_SECRET }}" >> $GITHUB_ENV
+          echo "TOPICS=${{ vars.TOPICS || 'web3 growth,KOL,gaming' }}" >> $GITHUB_ENV
+          echo "AUTOPILOT_MAX_POSTS=${{ vars.AUTOPILOT_MAX_POSTS || '1' }}" >> $GITHUB_ENV
+          echo "STATE_PATH=state.json" >> $GITHUB_ENV
+
+      - name: No-op (autopilot module removed)
+        run: echo "autopilot workflow disabled"
+
+      - name: Upload state (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: state-json
+          path: state.json
+          if-no-files-found: ignore

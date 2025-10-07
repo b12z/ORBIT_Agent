@@ -2,3 +2,5 @@ playwright
 python-telegram-bot
 requests
 python-dotenv
+requests-oauthlib
+openai

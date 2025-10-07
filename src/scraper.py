@@ -2,6 +2,7 @@ import os
 import re
 from typing import List, Dict, Any
 from playwright.sync_api import sync_playwright, Page, Browser
+from urllib.parse import quote
 import time
 
 
@@ -44,29 +45,77 @@ def search_posts(topics: List[str], limit: int = 5) -> List[Dict[str, Any]]:
 
 def _search_topic(page: Page, topic: str, limit: int) -> List[Dict[str, Any]]:
     """Search for a specific topic on X."""
-    # Construct search query
-    search_query = f'"{topic}" -is:reply -is:retweet'
-    search_url = f"https://twitter.com/search?q={search_query}&src=typed_query&f=live"
+    # Construct search query (no live filter)
+    query = f'{topic} -is:reply -is:retweet'
+    search_url_primary = f"https://x.com/search?q={quote(query)}&src=typed_query"
+    search_url_fallback = f"https://twitter.com/search?q={quote(query)}&src=typed_query"
     
     try:
-        page.goto(search_url, wait_until="networkidle")
-        time.sleep(3)  # Wait for content to load
-        
-        posts = []
-        scroll_count = 0
-        max_scrolls = 5
-        
-        while len(posts) < limit and scroll_count < max_scrolls:
-            # Extract posts from current view
-            current_posts = _extract_posts_from_page(page)
-            posts.extend(current_posts)
-            
-            # Scroll down to load more content
-            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            time.sleep(2)
-            scroll_count += 1
-        
-        return posts[:limit]
+        # goto with small retry, wait for DOM only (no networkidle)
+        def navigate_and_prime(url: str):
+            tries = 3
+            for i in range(tries):
+                try:
+                    page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                    break
+                except Exception:
+                    if i == tries - 1:
+                        raise
+                    time.sleep(1.5 + 0.5 * i)
+            # initial prime scrolls before waiting
+            for _ in range(3):
+                try:
+                    page.mouse.wheel(0, 1400)
+                except Exception:
+                    page.evaluate("window.scrollBy(0, 1400)")
+                time.sleep(0.8)
+            # wait for any status link
+            page.wait_for_selector('a[href*="/status/"]', timeout=60000)
+
+        # try primary, then fallback domain
+        try:
+            navigate_and_prime(search_url_primary)
+        except Exception:
+            navigate_and_prime(search_url_fallback)
+
+        # collect cards (prefer tweet articles, fallback to cell containers)
+        cards = page.query_selector_all('article[data-testid="tweet"]')
+        if not cards:
+            cards = page.query_selector_all('[data-testid="cellInnerDiv"]')
+        results = []
+        for c in cards[:30]:
+            try:
+                link = c.query_selector('a[href*="/status/"]')
+                text_el = c.query_selector('[data-testid="tweetText"]')
+                handle_el = c.query_selector('a[href^="/"][role="link"]')
+                if not (link and text_el and handle_el):
+                    continue
+
+                href = link.get_attribute("href") or ""  # /user/status/12345
+                tweet_id = href.split("/")[-1]
+                handle_href = handle_el.get_attribute("href") or "/"
+                handle = handle_href[1:].split("/")[0]
+                text_node = text_el.text_content() or ""
+                text_val = text_node.strip()
+                url = f"https://twitter.com/{handle}/status/{tweet_id}" if handle and tweet_id else ""
+                verified = c.query_selector('[data-testid="icon-verified"]') is not None
+
+                # Include both id and tweet_id for compatibility across callers
+                results.append({
+                    "id": tweet_id,
+                    "tweet_id": tweet_id,
+                    "handle": handle,
+                    "text": text_val,
+                    "url": url,
+                    "verified": verified,
+                    "followers": None,
+                })
+            except Exception as e:
+                print("Error extracting post:", e)
+                continue
+
+        print(f"Extracted {len(results)} posts for topic {topic}")
+        return results[:limit]
         
     except Exception as e:
         print(f"Error searching topic '{topic}': {e}")
@@ -147,7 +196,7 @@ def _extract_tweet_data(tweet_element) -> Dict[str, Any]:
             'author': author_name,
             'handle': handle,
             'text': text,
-            'url': f"https://twitter.com{handle}/status/{tweet_id}" if handle and tweet_id else "",
+            'url': f"https://twitter.com/{handle}/status/{tweet_id}" if handle and tweet_id else "",
             'verified': verified,
             'followers': followers
         }
@@ -165,13 +214,12 @@ def _filter_posts(posts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     for post in posts:
         if not post or not post.get('tweet_id'):
             continue
-            
-        # Check if post meets filtering criteria
+
+        # Temporarily allow only verified or allowlisted; ignore follower threshold placeholder
         is_verified = post.get('verified', False)
-        has_followers = post.get('followers', 0) >= 2000
         is_allowlisted = post.get('handle', '').lower() in allowlist
-        
-        if is_verified or has_followers or is_allowlisted:
+
+        if is_verified or is_allowlisted:
             filtered_posts.append(post)
     
     return filtered_posts

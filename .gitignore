@@ -1,2 +1,11 @@
 .env.local
-.env.local
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.env
+playwright-report/
+state.json
+.tele_offset.json
+.DS_Store

@@ -1,13 +1,16 @@
 import os
+import sys
 import json
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 
 # Import modules
 from src.scraper import search_posts  
-from src.tonebank import generate_reply  
+from src.x_search import search_recent_topics
 from src.telegram_bot import send_drafts  
 # from src.poster import post_tweet  # Commented out for now
+
+MANUAL_TWEET_ID = os.getenv("MANUAL_TWEET_ID")
 
 
 def load_state() -> List[str]:
@@ -44,8 +47,33 @@ def main():
     
     # Search for posts
     print("🔍 Searching for posts...")
+    if MANUAL_TWEET_ID:
+        from src.x_fetch import get_tweet_text
+        from src.reply_writer import write_reply
+        from src.telegram_bot import send_drafts
+        from src.poster import post_tweet
+
+        tweet_text = get_tweet_text(MANUAL_TWEET_ID) or "No text found for this tweet."
+        draft_text = write_reply(tweet_text)
+
+        print("Fetched post text:\n", tweet_text, "\n")
+        print("Draft reply:\n", draft_text, "\n")
+
+        approved = send_drafts([{"tweet_id": MANUAL_TWEET_ID, "author": "manual", "text": draft_text}])
+        print("Approved:", approved)
+
+        if approved.get("action") == "approve":
+            resp = post_tweet(approved["text"], in_reply_to=MANUAL_TWEET_ID)
+            print("Posted:", resp)
+        else:
+            print("Skipped manual reply.")
+        sys.exit(0)
+
     try:
-        posts = search_posts(topics, limit=3)
+        # Prefer API-based discovery; fallback to Playwright if empty
+        posts = search_recent_topics(topics, limit_per_topic=2)
+        if not posts:
+            posts = search_posts(topics, limit=3)
         print(f"✅ Found {len(posts)} posts")
         
         if not posts:
@@ -73,12 +101,13 @@ def main():
             continue
             
         try:
-            # Generate reply using tonebank
-            reply_text = generate_reply(post.get('text', ''))
+            # Use the same LLM writer as manual flow
+            from src.reply_writer import write_reply
+            reply_text = write_reply(post.get('text', ''))
             
             candidate = {
                 "tweet_id": tweet_id,
-                "author": post.get('author', 'Unknown'),
+                "author": post.get('handle') or post.get('author', 'unknown'),
                 "text": reply_text
             }
             candidates.append(candidate)
@@ -99,9 +128,15 @@ def main():
     try:
         approval_result = send_drafts(candidates)
         print(f"📋 Approval result: {approval_result}")
-        
-        if approval_result.get('action') != 'approve':
-            print(f"⏭️ No approval received: {approval_result.get('action')}")
+
+        # Post immediately if approved; otherwise print Skipped and exit
+        approved = approval_result
+        from src.poster import post_tweet
+        if approved.get("action") == "approve":
+            resp = post_tweet(approved["text"], in_reply_to=approved["tweet_id"])
+            print("Posted:", resp)
+        else:
+            print("Skipped.")
             return
             
     except Exception as e:
