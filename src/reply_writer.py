@@ -98,6 +98,8 @@ def write_reply(post_text: str) -> str:
     - Reference the actual content of the post first
     - Keep playful / sarcastic / appreciative tone
     - Subtly weave in ORBIT’s values (real traction, utility) only if it makes sense
+    - Address the poster directly ("you", "we"); never describe them in third-person (no "the author", "they said")
+    - Write as a reply to the post, not commentary about it; avoid meta phrases like "this post"
 
     Additional:
     - Use the {tone.upper()} tone: {tone_map[tone]}
