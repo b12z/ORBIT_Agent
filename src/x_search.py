@@ -2,6 +2,7 @@ import os
 import requests
 from typing import List, Dict
 from datetime import datetime, timezone, timedelta
+import time
 from requests_oauthlib import OAuth1
 
 
@@ -26,7 +27,11 @@ def search_recent_for_topic(topic: str, limit: int = 5) -> List[Dict]:
         "expansions": "author_id",
         "user.fields": "username,verified,public_metrics",
     }
-    r = requests.get(base, auth=_auth(), params=params, timeout=20)
+    for i in range(3):
+        r = requests.get(base, auth=_auth(), params=params, timeout=20)
+        if r.status_code != 429:
+            break
+        time.sleep(2 * (i + 1))
     if r.status_code != 200:
         # Best-effort fallback
         try:
@@ -100,7 +105,11 @@ def search_kol_recent(topics: List[str], limit: int = 1, hours: int = 12) -> Lis
         "expansions": "author_id",
         "user.fields": "username,verified,public_metrics",
     }
-    r = requests.get(base, auth=_auth(), params=params, timeout=20)
+    for i in range(3):
+        r = requests.get(base, auth=_auth(), params=params, timeout=20)
+        if r.status_code != 429:
+            break
+        time.sleep(2 * (i + 1))
     if r.status_code != 200:
         try:
             print("x_search KOL error:", r.status_code, r.json())

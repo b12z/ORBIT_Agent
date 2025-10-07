@@ -1,6 +1,6 @@
-playwright
-python-telegram-bot
-requests
-python-dotenv
-requests-oauthlib
-openai
+playwright==1.55.0
+python-telegram-bot>=20,<23
+requests>=2.32,<3
+python-dotenv>=1.0,<2
+requests-oauthlib>=2,<3
+openai>=1.40,<3

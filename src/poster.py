@@ -1,5 +1,6 @@
 import os, requests, json
 from requests_oauthlib import OAuth1
+import time
 
 
 def _auth():
@@ -17,7 +18,12 @@ def post_tweet(text: str, in_reply_to: str | None = None) -> dict:
     payload = {"text": text}
     if in_reply_to:
         payload["reply"] = {"in_reply_to_tweet_id": in_reply_to}
-    r = requests.post(url, auth=_auth(), json=payload)
+    # basic retry on rate limit/transient errors
+    for i in range(3):
+        r = requests.post(url, auth=_auth(), json=payload, timeout=20)
+        if r.status_code not in (429, 500, 502, 503, 504):
+            break
+        time.sleep(2 * (i + 1))
     try:
         data = r.json()
     except Exception:

@@ -40,6 +40,11 @@ def main():
     # Load environment variables
     load_dotenv('.env.local')
     
+    # Validate env quickly
+    required = ["OPENAI_API_KEY", "API_KEY", "API_KEY_SECRET", "X_ACCESS_TOKEN", "X_ACCESS_SECRET"]
+    missing = [k for k in required if not os.getenv(k)]
+    if missing:
+        print("❌ Missing env keys:", ", ".join(missing))
     # Read TOPICS from env or use default
     topics_str = os.getenv('TOPICS', 'Web3 growth,KOL marketing,Web3 gaming')
     topics = [topic.strip() for topic in topics_str.split(',')]
@@ -82,6 +87,11 @@ def main():
             
     except Exception as e:
         print(f"❌ Error searching posts: {e}")
+        try:
+            from src.telegram_bot import notify_error
+            notify_error(f"Search failure: {e}")
+        except Exception:
+            pass
         return
     
     # Load existing replied tweet IDs to avoid duplicates
@@ -133,14 +143,28 @@ def main():
         approved = approval_result
         from src.poster import post_tweet
         if approved.get("action") == "approve":
-            resp = post_tweet(approved["text"], in_reply_to=approved["tweet_id"])
-            print("Posted:", resp)
+            try:
+                resp = post_tweet(approved["text"], in_reply_to=approved["tweet_id"])
+                print("Posted:", resp)
+            except Exception as e:
+                print(f"❌ Error posting tweet: {e}")
+                try:
+                    from src.telegram_bot import notify_error
+                    notify_error(f"Post failure: {e}")
+                except Exception:
+                    pass
+                return
         else:
             print("Skipped.")
             return
             
     except Exception as e:
         print(f"❌ Error sending drafts: {e}")
+        try:
+            from src.telegram_bot import notify_error
+            notify_error(f"Telegram approval failure: {e}")
+        except Exception:
+            pass
         return
     
     # After approval, just print what would be posted

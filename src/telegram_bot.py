@@ -43,3 +43,16 @@ async def send_drafts_async(drafts: list[dict]) -> dict:
 def send_drafts(drafts: list[dict]) -> dict:
     """sync wrapper for convenience"""
     return asyncio.run(send_drafts_async(drafts))
+
+
+def notify_error(text: str) -> None:
+    """Send a concise error notification to the configured Telegram chat."""
+    msg = f"❌ ORBIT error: {text}"
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        async def _send():
+            await bot.send_message(chat_id=CHAT_ID, text=msg[:4000])
+        loop.run_until_complete(_send())
+    except Exception:
+        pass

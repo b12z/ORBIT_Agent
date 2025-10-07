@@ -10,6 +10,7 @@ An automated reply agent for X (Twitter) with two modes:
 - Playwright scraper as fallback (`src/scraper.py`)
 - LLM drafting with OpenAI (`src/reply_writer.py`) — adaptive tone, keyword anchoring, ≤200 chars
 - Telegram approval flow (`src/telegram_bot.py`, `src/tele_router.py`)
+- Telegram error notifications (`notify_error`) on search/approval/post failures
 - One-off runners: `src/dev_once.py`, `src/smoke_scrape.py`
 
 ## Environment
@@ -46,6 +47,9 @@ PYTHONPATH=. TOPICS="web3" DRY_RUN=true MAX_POSTS=1 python -m src.smoke_scrape
 ```
 PYTHONPATH=. TOPICS="web3" DRY_RUN=false MAX_POSTS=1 python -m src.smoke_scrape
 ```
+
+- Error notifications to Telegram:
+  - On search, approval, or post errors, the app sends a short message to the configured `TELEGRAM_CHAT_ID` via `notify_error`.
 
 - Telegram router one-shot:
 ```
