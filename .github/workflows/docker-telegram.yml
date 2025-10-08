@@ -1,0 +1,71 @@
+name: ORBIT Agent (Docker - Fast)
+on:
+  schedule:
+    - cron: "0 */2 * * *"  # every 2 hours
+  workflow_dispatch: {}
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Download state from previous run
+        uses: actions/download-artifact@v4
+        with:
+          name: telegram-state-json
+          path: .
+        continue-on-error: true
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          tags: orbit-bot:latest
+
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Run Telegram Processor
+        run: |
+          docker run --rm \
+            -e TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
+            -e TELEGRAM_CHAT_ID="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+            -e API_KEY="${{ secrets.API_KEY }}" \
+            -e API_KEY_SECRET="${{ secrets.API_KEY_SECRET }}" \
+            -e X_ACCESS_TOKEN="${{ secrets.X_ACCESS_TOKEN }}" \
+            -e X_ACCESS_SECRET="${{ secrets.X_ACCESS_SECRET }}" \
+            -e TOPICS="${{ secrets.TOPICS }}" \
+            -e ALLOWLIST="${{ secrets.ALLOWLIST }}" \
+            -v $(pwd):/app/state \
+            orbit-bot:latest
+
+      - name: Upload state (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telegram-state-json
+          path: |
+            pending_approvals.json
+            replied_tweets.json
+          if-no-files-found: ignore

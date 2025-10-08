@@ -1,0 +1,45 @@
+name: ORBIT Agent (Docker - Simple)
+on:
+  workflow_dispatch: {}
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download state from previous run
+        uses: actions/download-artifact@v4
+        with:
+          name: telegram-state-json
+          path: .
+        continue-on-error: true
+
+      - name: Build and run Docker container
+        run: |
+          # Build the image
+          docker build -t orbit-bot .
+          
+          # Run the container with environment variables
+          docker run --rm \
+            -e TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
+            -e TELEGRAM_CHAT_ID="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+            -e API_KEY="${{ secrets.API_KEY }}" \
+            -e API_KEY_SECRET="${{ secrets.API_KEY_SECRET }}" \
+            -e X_ACCESS_TOKEN="${{ secrets.X_ACCESS_TOKEN }}" \
+            -e X_ACCESS_SECRET="${{ secrets.X_ACCESS_SECRET }}" \
+            -e TOPICS="${{ secrets.TOPICS }}" \
+            -e ALLOWLIST="${{ secrets.ALLOWLIST }}" \
+            -v $(pwd):/app/state \
+            orbit-bot
+
+      - name: Upload state (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telegram-state-json
+          path: |
+            pending_approvals.json
+            replied_tweets.json
+          if-no-files-found: ignore
