@@ -1,0 +1,67 @@
+name: Test X API Credentials
+
+on:
+  workflow_dispatch: {}  # Manual trigger only
+
+jobs:
+  validate-credentials:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Validate X API Credentials
+        run: python -m src.validate_x_auth
+        env:
+          API_KEY: ${{ secrets.X_API_KEY }}
+          API_KEY_SECRET: ${{ secrets.X_API_KEY_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_SECRET: ${{ secrets.X_ACCESS_SECRET }}
+
+      - name: Test with Mock Data (no API calls)
+        run: python -m src.test_scrape_safe
+        env:
+          TEST_MODE: mock
+          TOPICS: web3
+          MAX_POSTS: 1
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Minimal API Test (1 request)
+        run: python -m src.test_scrape_safe
+        env:
+          TEST_MODE: minimal
+          TOPICS: web3
+          MAX_POSTS: 1
+          API_KEY: ${{ secrets.X_API_KEY }}
+          API_KEY_SECRET: ${{ secrets.X_API_KEY_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_SECRET: ${{ secrets.X_ACCESS_SECRET }}
+
+      - name: Results Summary
+        if: always()
+        run: |
+          echo "=================================="
+          echo "Test completed!"
+          echo "=================================="
+          echo ""
+          echo "If all steps passed, your credentials are valid."
+          echo "You can now safely run the main workflow."
+          echo ""
+          echo "Next steps:"
+          echo "  1. Run 'Schedule 3x Autopost' workflow"
+          echo "  2. Monitor for any 401 errors"
+          echo "  3. Check rate limit status"
+

@@ -6,15 +6,27 @@ from .reply_writer import write_reply
 from .poster import post_tweet
 
 def dev_once():
-    topics_env = os.getenv("TOPICS", "web3 growth,KOL,gaming")
+    topics_env = os.getenv("TOPICS", "$POL")
     topics = [t.strip() for t in topics_env.split(",") if t.strip()]
     max_posts = int(os.getenv("MAX_POSTS", "1"))
     dry_run = os.getenv("DRY_RUN", "true").lower() == "true"
+    
+    # Configurable engagement thresholds
+    min_replies = int(os.getenv("MIN_REPLIES", "10"))
+    min_faves = int(os.getenv("MIN_FAVES", "10"))
+    hours = int(os.getenv("SEARCH_HOURS", "12"))
 
     print(f"[dev] topics={topics} dry_run={dry_run} max_posts={max_posts}")
+    print(f"[dev] engagement filters: min_replies={min_replies} min_faves={min_faves} hours={hours}")
 
     # Try API-based search first for reliability; fallback to Playwright scraper
-    posts: List[Dict] = search_kol_recent(topics=topics, limit=1, hours=12)
+    posts: List[Dict] = search_kol_recent(
+        topics=topics, 
+        limit=1, 
+        hours=hours,
+        min_replies=min_replies,
+        min_faves=min_faves
+    )
     if not posts:
         posts = search_recent_topics(topics=topics, limit_per_topic=3)
     if not posts:
