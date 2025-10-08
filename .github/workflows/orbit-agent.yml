@@ -49,5 +49,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: telegram-state-json
-          path: state.json
+          path: |
+            pending_approvals.json
+            replied_tweets.json
           if-no-files-found: ignore

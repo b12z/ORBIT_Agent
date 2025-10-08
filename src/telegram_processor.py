@@ -182,19 +182,22 @@ def process_approved_drafts():
 
 
 def main():
-    """Main processor - handles both phases."""
+    """Main processor - handles both phases in one session."""
     print("🚀 ORBIT Telegram Processor starting...")
     
-    # Check if we should process approved drafts first
+    # Phase 1: Process approved drafts first
     pending = load_pending()
     if pending:
-        print(f"📋 Found {len(pending)} pending approvals, processing first...")
+        print(f"📋 Phase 1: Found {len(pending)} pending approvals, processing...")
         process_approved_drafts()
+    else:
+        print("📭 Phase 1: No pending approvals")
     
-    # Then process new messages
+    # Phase 2: Process new messages
+    print("\n🔍 Phase 2: Processing new messages...")
     process_new_messages()
     
-    print("✅ Processing complete")
+    print("\n✅ Processing complete - both phases done in one session")
 
 
 if __name__ == "__main__":
