@@ -27,14 +27,14 @@ jobs:
       - name: Env
         run: |
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
-          echo "API_KEY=${{ secrets.X_API_KEY }}" >> $GITHUB_ENV
-          echo "API_KEY_SECRET=${{ secrets.X_API_KEY_SECRET }}" >> $GITHUB_ENV
+          echo "API_KEY=${{ secrets.API_KEY }}" >> $GITHUB_ENV
+          echo "API_KEY_SECRET=${{ secrets.API_KEY_SECRET }}" >> $GITHUB_ENV
           echo "X_ACCESS_TOKEN=${{ secrets.X_ACCESS_TOKEN }}" >> $GITHUB_ENV
           echo "X_ACCESS_SECRET=${{ secrets.X_ACCESS_SECRET }}" >> $GITHUB_ENV
-          echo "TOPICS=${{ vars.TOPICS || '$POL' }}" >> $GITHUB_ENV
-          echo "MIN_REPLIES=${{ vars.MIN_REPLIES || '10' }}" >> $GITHUB_ENV
-          echo "MIN_FAVES=${{ vars.MIN_FAVES || '10' }}" >> $GITHUB_ENV
-          echo "SEARCH_HOURS=${{ vars.SEARCH_HOURS || '12' }}" >> $GITHUB_ENV
+          echo "TOPICS=\$POL" >> $GITHUB_ENV
+          echo "MIN_REPLIES=10" >> $GITHUB_ENV
+          echo "MIN_FAVES=10" >> $GITHUB_ENV
+          echo "SEARCH_HOURS=12" >> $GITHUB_ENV
           echo "DRY_RUN=false" >> $GITHUB_ENV
           echo "MAX_POSTS=1" >> $GITHUB_ENV
 
