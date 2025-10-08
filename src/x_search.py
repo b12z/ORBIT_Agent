@@ -139,14 +139,26 @@ def search_kol_recent(topics: List[str], limit: int = 1, hours: int = 12, min_re
         topics = ["web3"]
     
     # Build topic clause - support multiple terms
-    topics_clause = " OR ".join([t.strip() for t in topics if t.strip()])
+    # Convert cashtags to text search (e.g., $POL -> POL)
+    processed_topics = []
+    for t in topics:
+        t = t.strip()
+        if t.startswith('$'):
+            # Convert cashtag to text search
+            processed_topics.append(t[1:])  # Remove $ prefix
+            processed_topics.append(t)      # Also search for the cashtag
+        else:
+            processed_topics.append(t)
+    
+    topics_clause = " OR ".join(processed_topics)
     
     # KOL terms
     kol_clause = 'KOL OR "key opinion leader" OR influencer'
     
-    # Build query with engagement filters using X API v2 operators
-    # Format: (topics) (KOL terms) min_replies:N min_faves:N -is:reply -is:retweet
-    query = f"({topics_clause}) ({kol_clause}) min_replies:{min_replies} min_faves:{min_faves} -is:reply -is:retweet"
+    # Build query with valid X API v2 operators
+    # Note: min_replies and min_faves are not supported in API v2, we'll filter client-side
+    # Format: (topics) (KOL terms) -is:reply -is:retweet
+    query = f"({topics_clause}) ({kol_clause}) -is:reply -is:retweet"
     
     params = {
         "query": query,
