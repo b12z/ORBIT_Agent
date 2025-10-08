@@ -17,10 +17,26 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: Install deps
         run: |
-          pip install -r requirements.txt
-          pip install python-dotenv
+          pip install --cache-dir ~/.cache/pip -r requirements.txt
+          pip install --cache-dir ~/.cache/pip python-dotenv
           python -m playwright install --with-deps chromium
 
       - name: Download state from previous run
