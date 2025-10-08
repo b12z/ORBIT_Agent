@@ -1,7 +1,7 @@
-name: Schedule 3x Autopost
+name: Schedule 12x Autopost
 on:
   schedule:
-    - cron: "0 0,8,16 * * *"  # every 8 hours (00:00, 08:00, 16:00 UTC)
+    - cron: "0 */2 * * *"  # every 2 hours (00:00, 02:00, 04:00, 06:00, 08:00, 10:00, 12:00, 14:00, 16:00, 18:00, 20:00, 22:00 UTC)
   workflow_dispatch: {}
 jobs:
   run-autopost-once:
